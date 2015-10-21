@@ -22,8 +22,8 @@ public class CustomScrollViewByY extends ViewGroup {
     private static final int SNAP_UP = 1;
     private static final int SNAP_DOWN = -1;
 
-    private int mScreenHeight;
-    private int mScreenWidth;
+    private int mChiildHeight;
+    private int mChildWidth;
     private int currentPage;
     private int mTouchSlop;
     private int mLastY;
@@ -36,8 +36,7 @@ public class CustomScrollViewByY extends ViewGroup {
     private VelocityTracker mVelocityTracker = null;
     private Scroller mScroller;
     private Context mContext;
-
-
+    
     public CustomScrollViewByY(Context context) {
         this(context, null);
     }
@@ -61,8 +60,8 @@ public class CustomScrollViewByY extends ViewGroup {
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
 
         DisplayMetrics dm = getResources().getDisplayMetrics();
-        mScreenWidth = dm.widthPixels;    //得到宽度
-        mScreenHeight = dm.heightPixels - getStatusBarHeight();  //得到屏幕显示区域的高度
+        mChildWidth = dm.widthPixels;    //得到宽度
+        mChiildHeight= dm.heightPixels - getStatusBarHeight();  //得到屏幕显示区域的高度
         currentPage = 1;
     }
 
@@ -81,12 +80,12 @@ public class CustomScrollViewByY extends ViewGroup {
         int childCount = getChildCount();
         //设置ViewGroup高度
         MarginLayoutParams mLayoutParams = (MarginLayoutParams) getLayoutParams();
-        mLayoutParams.height = mScreenHeight * childCount;
+        mLayoutParams.height = mChiildHeight * childCount;
         setLayoutParams(mLayoutParams);
         for (int i = 0; i < childCount; i++) {  //设置子View的放置位置
             View child = getChildAt(i);
             if (child.getVisibility() != View.GONE) {
-                child.layout(l, i * mScreenHeight, r, (i + 1) * mScreenHeight);
+                child.layout(l, i * b, r, (i + 1) * b);
             }
         }
     }
@@ -118,7 +117,7 @@ public class CustomScrollViewByY extends ViewGroup {
                         scrollBy(0,deltaY);
                     }
                 } else {
-                    if (ScrollY + deltaY <= (getChildCount() - 1) * mScreenHeight) {
+                    if (ScrollY + deltaY <= (getChildCount() - 1) * mChiildHeight) {
                         scrollBy(0,deltaY);
                     }
                 }
@@ -130,7 +129,7 @@ public class CustomScrollViewByY extends ViewGroup {
                 if ((Math.abs(initialVelocity) > mMinimumVelocity)
                         && getChildCount() > 0) {
                     mStartStickeyScroll = true; //当结束惯性滑动时触发粘性滑动
-                    fling(-initialVelocity,mScreenHeight * (getChildCount() - 1));
+                    fling(-initialVelocity,mChiildHeight * (getChildCount() - 1));
                 } else {  //无惯性滑动时，直接触发粘性滑动
                     StartStickyScroll();
                 }
@@ -175,9 +174,9 @@ public class CustomScrollViewByY extends ViewGroup {
      */
     private void StartStickyScroll() {
         int mEndY = getScrollY();
-        int dScrollY = mEndY%mScreenHeight;
+        int dScrollY = mEndY%mChiildHeight;
         if (mSnapDirection == SNAP_UP) {  //上滑
-            if (dScrollY <= mScreenHeight/4) {
+            if (dScrollY <= mChiildHeight/4) {
                 mScroller.startScroll(
                         0,getScrollY(),
                         0,-dScrollY,
@@ -185,12 +184,12 @@ public class CustomScrollViewByY extends ViewGroup {
             } else {
                 mScroller.startScroll(
                         0,getScrollY(),
-                        0,mScreenHeight - dScrollY,
+                        0,mChiildHeight - dScrollY,
                         DURATION_TIME);
             }
         } else {
-            dScrollY = mScreenHeight - dScrollY;
-            if (dScrollY <= mScreenHeight/4) {
+            dScrollY = mChiildHeight - dScrollY;
+            if (dScrollY <= mChiildHeight/4) {
                 mScroller.startScroll(
                         0,getScrollY(),
                         0,dScrollY,
@@ -198,7 +197,7 @@ public class CustomScrollViewByY extends ViewGroup {
             } else {
                 mScroller.startScroll(
                         0,getScrollY(),
-                        0,-mScreenHeight + dScrollY,
+                        0,-mChiildHeight + dScrollY,
                         DURATION_TIME);
             }
         }
