@@ -3,13 +3,12 @@ package com.shenqili.ui;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.widget.ScrollView;
 import android.widget.Scroller;
 
 /**
@@ -17,10 +16,11 @@ import android.widget.Scroller;
  */
 public class CustomScrollViewByY extends ViewGroup {
     private static final String TAG = "CustomScrollViewByY";
-    private static final int DURATION_TIME = 800;  //粘性滚动持续时间
+    private static final int DURATION_TIME = 1000;  //粘性滚动持续时间毫秒
     private static final int MIN_VELOCITY = 400;
     private static final int SNAP_UP = 1;
     private static final int SNAP_DOWN = -1;
+    private static final float STICKY_SCROLL_HEIGHT_RATE = 1/4;  //触发粘性滑动所占总控件高度比
 
     private int mChiildHeight;
     private int mChildWidth;
@@ -36,7 +36,7 @@ public class CustomScrollViewByY extends ViewGroup {
     private VelocityTracker mVelocityTracker = null;
     private Scroller mScroller;
     private Context mContext;
-    
+
     public CustomScrollViewByY(Context context) {
         this(context, null);
     }
@@ -59,9 +59,6 @@ public class CustomScrollViewByY extends ViewGroup {
         mMinimumVelocity = configuration.getScaledMinimumFlingVelocity() + MIN_VELOCITY;
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
 
-        DisplayMetrics dm = getResources().getDisplayMetrics();
-        mChildWidth = dm.widthPixels;    //得到宽度
-        mChiildHeight= dm.heightPixels - getStatusBarHeight();  //得到屏幕显示区域的高度
         currentPage = 1;
     }
 
@@ -78,6 +75,8 @@ public class CustomScrollViewByY extends ViewGroup {
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         int childCount = getChildCount();
+        mChiildHeight = b - t;
+        mChildWidth = r - l;
         //设置ViewGroup高度
         MarginLayoutParams mLayoutParams = (MarginLayoutParams) getLayoutParams();
         mLayoutParams.height = mChiildHeight * childCount;
@@ -85,7 +84,7 @@ public class CustomScrollViewByY extends ViewGroup {
         for (int i = 0; i < childCount; i++) {  //设置子View的放置位置
             View child = getChildAt(i);
             if (child.getVisibility() != View.GONE) {
-                child.layout(l, i * b, r, (i + 1) * b);
+                child.layout(l, i * (b - t), r, (i + 1) * (b - t));
             }
         }
     }
@@ -102,6 +101,7 @@ public class CustomScrollViewByY extends ViewGroup {
         obtainVelocityTracker(event);
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                mStartStickeyScroll = false;
                 if (!mScroller.isFinished()) {
                     mScroller.abortAnimation();
                 }
@@ -111,6 +111,8 @@ public class CustomScrollViewByY extends ViewGroup {
                 int deltaY = mLastY - currentY;
                 mLastY = currentY;
                 ScrollY = getScrollY();
+                //获取滑动手势的方向
+                mSnapDirection = deltaY > 0?SNAP_UP:SNAP_DOWN;
                 //预测判定移动后是否会超出顶末端界限
                 if (deltaY < 0) {
                     if (ScrollY + deltaY > 0) {
@@ -125,12 +127,11 @@ public class CustomScrollViewByY extends ViewGroup {
             case MotionEvent.ACTION_UP:
                 mVelocityTracker.computeCurrentVelocity(1000,mMaximumVelocity);  //速度单位：1000毫秒内移动的像素
                 int initialVelocity = (int) mVelocityTracker.getYVelocity();
-                mSnapDirection = initialVelocity < 0?SNAP_UP:SNAP_DOWN;
                 if ((Math.abs(initialVelocity) > mMinimumVelocity)
                         && getChildCount() > 0) {
-                    mStartStickeyScroll = true; //当结束惯性滑动时触发粘性滑动
+                    mStartStickeyScroll = true; //标志位：当结束惯性滑动时触发粘性滑动
                     fling(-initialVelocity,mChiildHeight * (getChildCount() - 1));
-                } else {  //无惯性滑动时，直接触发粘性滑动
+                } else {  //手势离开时，触发粘性滑动
                     StartStickyScroll();
                 }
                 recycleVelocityTracker();
@@ -176,7 +177,7 @@ public class CustomScrollViewByY extends ViewGroup {
         int mEndY = getScrollY();
         int dScrollY = mEndY%mChiildHeight;
         if (mSnapDirection == SNAP_UP) {  //上滑
-            if (dScrollY <= mChiildHeight/4) {
+            if (dScrollY <= mChiildHeight * STICKY_SCROLL_HEIGHT_RATE) {
                 mScroller.startScroll(
                         0,getScrollY(),
                         0,-dScrollY,
@@ -189,7 +190,7 @@ public class CustomScrollViewByY extends ViewGroup {
             }
         } else {
             dScrollY = mChiildHeight - dScrollY;
-            if (dScrollY <= mChiildHeight/4) {
+            if (dScrollY <= mChiildHeight * STICKY_SCROLL_HEIGHT_RATE) {
                 mScroller.startScroll(
                         0,getScrollY(),
                         0,dScrollY,
@@ -215,18 +216,5 @@ public class CustomScrollViewByY extends ViewGroup {
             mVelocityTracker.recycle();
             mVelocityTracker = null;
         }
-    }
-
-    /**
-     * 用于获取状态栏的高度。
-     * @return 返回状态栏高度像素值
-     */
-    public int getStatusBarHeight() {
-        int statusBarHeight = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
-        }
-        return statusBarHeight;
     }
 }
